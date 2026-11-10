@@ -17,6 +17,8 @@ Anyone with Python can install and run Git2Report globally in one command:
 ```bash
 pip install git2report
 git2report --ui
+# Or if your PATH isn't updated:
+python -m git2report --ui
 ```
 
 Or run directly without installing using `pipx`:
