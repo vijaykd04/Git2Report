@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "git2report"
+version = "0.1.0"
+description = "Turn Git history into a plain-language, evidence-linked progress report."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pydriller>=2.5", "typer>=0.9", "jinja2>=3.1", "reportlab>=4.0"]
+
+[project.optional-dependencies]
+ollama = ["ollama>=0.3"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+git2report = "git2report.cli:app"
+git2report-eval = "git2report.eval_tools:app"
+git2report-ui = "git2report.web:main"
+
+[tool.setuptools]
+packages = ["git2report"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

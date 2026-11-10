@@ -1,0 +1,24 @@
+# Optional: build a report every Friday and attach it to the run. NOT yet tested on GitHub.
+name: weekly-report
+on:
+  schedule:
+    - cron: "30 9 * * 5"        # Fridays 09:30 UTC
+  workflow_dispatch: {}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0         # full history is needed to read old commits
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install git2report   # or: pip install .  if the tool lives in this repo
+      - run: git2report --repo . --since 7d --audience guide --out weekly.pdf --both
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report
+          path: |
+            weekly.pdf
+            weekly.md

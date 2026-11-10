@@ -1,0 +1,14 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/
+report.pdf
+report.md
+report.html
+output/
+cloned_repos/
+demo_repo/
+scratch/
+.env
+.git2report_cache.json
+reports/
