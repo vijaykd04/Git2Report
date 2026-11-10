@@ -1,20 +1,39 @@
 # Git2Report
 
+[![PyPI version](https://img.shields.io/pypi/v/git2report.svg)](https://pypi.org/project/git2report/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Turn a Git repository's history into a plain-language weekly progress report, where **every number is
-counted by code** and **every line carries commit IDs as proof**. The AI (optional, local) only writes
+counted by code** and **every line carries commit IDs as proof**. The AI (optional, local Ollama or Google Gemini) only writes
 sentences.
 
-```
-git2report --repo . --since 7d --audience guide --out report.pdf
+---
+
+## ⚡ Quick 1-Command Run (No Cloning Required!)
+
+Anyone with Python can install and run Git2Report globally in one command:
+
+```bash
+pip install git2report
+git2report --ui
 ```
 
-## Install
-
+Or run directly without installing using `pipx`:
+```bash
+pipx run git2report --ui
 ```
+
+---
+
+## Install for Development
+
+```bash
+git clone https://github.com/vijaykd04/Git2Report.git
+cd Git2Report
 python -m venv .venv
 .venv\Scripts\activate          # Windows   (Linux/macOS: source .venv/bin/activate)
-pip install -e ".[dev]"          # core + pytest
-pip install -e ".[ollama]"       # only if you want AI sentences (also install Ollama from ollama.com)
+pip install -e ".[dev]"          # includes test suite
 ```
 
 ## Use
