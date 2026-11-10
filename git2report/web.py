@@ -606,7 +606,7 @@ TERMINAL_HTML = """<!DOCTYPE html>
           <span class="p-user">root</span><span class="p-at">@</span><span class="p-host">git2report</span><span class="p-colon">:</span><span class="p-path">~</span><span class="p-dollar">$</span>
         </div>
         <div class="command-display" id="commandPreview">
-          git2report --repo cloned_repos/CampusThrift --since 2025-01-01 --audience guide --llm gemini --all
+          git2report --repo cloned_repos/CampusThrift --since 2025-01-01 --audience guide --all
         </div>
         <span class="cursor-blink"></span>
       </div>
@@ -677,14 +677,14 @@ TERMINAL_HTML = """<!DOCTYPE html>
                 <span class="arg-desc">&lt;gemini | ollama | offline&gt;</span>
               </label>
               <select id="llmSelect" class="term-select" onchange="onLlmChange()">
-                <option value="gemini" selected>gemini (Google Gemini + Smart Cache)</option>
+                <option value="offline" selected>offline (Instant / 100% Deterministic / No Keys)</option>
                 <option value="ollama">ollama (Local Private AI / Offline Model)</option>
-                <option value="offline">offline (Deterministic Heuristic / Zero AI)</option>
+                <option value="gemini">gemini (Google Gemini Cloud AI)</option>
               </select>
             </div>
 
-            <!-- Gemini API Key Input (Shows when gemini is selected) -->
-            <div class="arg-group" id="apiKeyGroup">
+            <!-- Gemini API Key Input (Shows only when gemini is selected) -->
+            <div class="arg-group" id="apiKeyGroup" style="display: none;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <label class="arg-label" for="apiKeyInput">
                   <span>--api-key</span>
@@ -911,7 +911,10 @@ TERMINAL_HTML = """<!DOCTYPE html>
       const apiKey = document.getElementById('apiKeyInput').value.trim();
       const next = document.getElementById('nextGoalInput').value.trim();
 
-      let cmd = `git2report --repo ${repo} --since ${since} --audience ${audience} --llm ${llm}`;
+      let cmd = `git2report --repo ${repo} --since ${since} --audience ${audience}`;
+      if (llm !== 'offline') {
+        cmd += ` --llm ${llm}`;
+      }
       if (llm === 'ollama' && model) {
         cmd += ` --model ${model}`;
       }
@@ -930,12 +933,12 @@ TERMINAL_HTML = """<!DOCTYPE html>
         document.getElementById('repoInput').value = 'cloned_repos/CampusThrift';
         document.getElementById('sinceInput').value = '2025-01-01';
         document.getElementById('audienceSelect').value = 'guide';
-        document.getElementById('llmSelect').value = 'gemini';
+        document.getElementById('llmSelect').value = 'offline';
       } else if (type === 'current') {
         document.getElementById('repoInput').value = '.';
         document.getElementById('sinceInput').value = '7d';
         document.getElementById('audienceSelect').value = 'team';
-        document.getElementById('llmSelect').value = 'gemini';
+        document.getElementById('llmSelect').value = 'offline';
       } else if (type === 'offline') {
         document.getElementById('llmSelect').value = 'offline';
       }

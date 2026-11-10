@@ -777,9 +777,6 @@ HTML_TEMPLATE = """\
         <div class="summary-box">
           {{ s.text }}
         </div>
-        {% if s.note %}
-        <div style="font-size: 0.8rem; color: var(--warning); margin-bottom: 10px;">⚠️ {{ s.note }}</div>
-        {% endif %}
 
         {% if s.commits %}
         <table class="commit-table">
