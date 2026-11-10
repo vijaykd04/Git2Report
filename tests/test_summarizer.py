@@ -98,3 +98,31 @@ def test_client_audience_with_only_internal_work(commit):
 def test_team_wording_works_without_conventional_prefixes(commit):
     r = SummaryRequest("X", [commit("Add login page"), commit("Fixed crash on start")], "", "team")
     assert offline_sentence(r) == "Added: Login page. Fixed: Crash on start."
+
+
+def test_ollama_summarizer_uses_plain_answer(commit):
+    from git2report.summarizer import OllamaSummarizer
+    s = OllamaSummarizer(chat=lambda p: '{"summary": "Built student marketplace and listing filters."}')
+    res = s.summarize(SummaryRequest("Marketplace", [commit("feat: add filters")], "", "guide"))
+    assert res.mode == "ai"
+    assert not res.flagged
+    assert res.text == "Built student marketplace and listing filters."
+
+
+def test_ollama_offline_fallback(commit):
+    from git2report.summarizer import OllamaSummarizer
+    def _fail(p):
+        raise ConnectionRefusedError("Ollama daemon unreachable")
+    s = OllamaSummarizer(chat=_fail)
+    res = s.summarize(SummaryRequest("Marketplace", [commit("feat: add filters")], "", "guide"))
+    assert res.mode == "offline"
+    assert res.flagged
+    assert "AI unavailable" in res.note
+
+
+def test_get_summarizer_factory():
+    from git2report.summarizer import get_summarizer, OllamaSummarizer, GeminiSummarizer, OfflineSummarizer
+    assert isinstance(get_summarizer("ollama", "llama3:8b"), OllamaSummarizer)
+    assert isinstance(get_summarizer("gemini", "gemini-2.5-flash"), GeminiSummarizer)
+    assert isinstance(get_summarizer("offline"), OfflineSummarizer)
+

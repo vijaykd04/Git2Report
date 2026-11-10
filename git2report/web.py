@@ -674,13 +674,33 @@ TERMINAL_HTML = """<!DOCTYPE html>
             <div class="arg-group">
               <label class="arg-label" for="llmSelect">
                 <span>--llm</span>
-                <span class="arg-desc">&lt;gemini | offline | ollama&gt;</span>
+                <span class="arg-desc">&lt;gemini | ollama | offline&gt;</span>
               </label>
-              <select id="llmSelect" class="term-select" onchange="updateCliPreview()">
+              <select id="llmSelect" class="term-select" onchange="onLlmChange()">
                 <option value="gemini" selected>gemini (Google Gemini + Smart Cache)</option>
-                <option value="offline">offline (Deterministic Heuristics / Zero API)</option>
-                <option value="ollama">ollama (Local LLaMA3 Model)</option>
+                <option value="ollama">ollama (Local Private AI / Offline Model)</option>
+                <option value="offline">offline (Deterministic Heuristic / Zero AI)</option>
               </select>
+            </div>
+
+            <!-- Model Selection (Shows for Ollama & Gemini) -->
+            <div class="arg-group" id="modelGroup" style="display: none;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label class="arg-label" for="modelInput">
+                  <span>--model</span>
+                  <span class="arg-desc" id="modelLabelDesc">&lt;model name&gt;</span>
+                </label>
+                <span id="ollamaStatusBadge" style="font-size: 0.68rem; color: var(--text-muted);"></span>
+              </div>
+              <input type="text" id="modelInput" class="term-input" value="llama3:8b" placeholder="e.g. llama3:8b, mistral, deepseek-r1:8b" oninput="updateCliPreview()">
+              <div class="preset-pills" id="modelPills">
+                <span class="p-pill active" onclick="setModelVal('llama3:8b')">llama3:8b</span>
+                <span class="p-pill" onclick="setModelVal('llama3.2')">llama3.2</span>
+                <span class="p-pill" onclick="setModelVal('mistral')">mistral</span>
+                <span class="p-pill" onclick="setModelVal('deepseek-r1:8b')">deepseek-r1:8b</span>
+                <span class="p-pill" onclick="setModelVal('phi4')">phi4</span>
+                <span class="p-pill" onclick="setModelVal('qwen2.5')">qwen2.5</span>
+              </div>
             </div>
 
             <!-- Planned Goals -->
@@ -798,7 +818,56 @@ TERMINAL_HTML = """<!DOCTYPE html>
         console.error(e);
       }
       updateCliPreview();
+      checkOllamaStatus();
     });
+
+    async function checkOllamaStatus() {
+      const badge = document.getElementById('ollamaStatusBadge');
+      try {
+        const res = await fetch('/api/ollama/status');
+        const data = await res.json();
+        if (data.online) {
+          badge.innerHTML = `<span style="color: var(--accent-green);">● OLLAMA ONLINE</span>`;
+          if (data.models && data.models.length > 0) {
+            const container = document.getElementById('modelPills');
+            container.innerHTML = '';
+            data.models.forEach((m, idx) => {
+              const pill = document.createElement('span');
+              pill.className = 'p-pill' + (idx === 0 ? ' active' : '');
+              pill.innerText = m;
+              pill.onclick = () => setModelVal(m);
+              container.appendChild(pill);
+            });
+            document.getElementById('modelInput').value = data.models[0];
+            updateCliPreview();
+          }
+        } else {
+          badge.innerHTML = `<span style="color: var(--text-muted);">○ OLLAMA OFFLINE (run 'ollama serve')</span>`;
+        }
+      } catch (e) {
+        badge.innerHTML = `<span style="color: var(--text-muted);">○ OFFLINE</span>`;
+      }
+    }
+
+    function onLlmChange() {
+      const llm = document.getElementById('llmSelect').value;
+      const modelGroup = document.getElementById('modelGroup');
+      if (llm === 'ollama') {
+        modelGroup.style.display = 'flex';
+        document.getElementById('modelLabelDesc').innerText = '<ollama model, e.g. llama3:8b>';
+        checkOllamaStatus();
+      } else {
+        modelGroup.style.display = 'none';
+      }
+      updateCliPreview();
+    }
+
+    function setModelVal(val) {
+      document.getElementById('modelInput').value = val;
+      document.querySelectorAll('#modelPills .p-pill').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      updateCliPreview();
+    }
 
     function setSinceVal(val) {
       document.getElementById('sinceInput').value = val;
@@ -812,9 +881,13 @@ TERMINAL_HTML = """<!DOCTYPE html>
       const since = document.getElementById('sinceInput').value.trim() || '7d';
       const audience = document.getElementById('audienceSelect').value;
       const llm = document.getElementById('llmSelect').value;
+      const model = document.getElementById('modelInput').value.trim();
       const next = document.getElementById('nextGoalInput').value.trim();
 
       let cmd = `git2report --repo ${repo} --since ${since} --audience ${audience} --llm ${llm}`;
+      if (llm === 'ollama' && model) {
+        cmd += ` --model ${model}`;
+      }
       if (next) {
         cmd += ` --next "${next}"`;
       }
@@ -836,7 +909,7 @@ TERMINAL_HTML = """<!DOCTYPE html>
       } else if (type === 'offline') {
         document.getElementById('llmSelect').value = 'offline';
       }
-      updateCliPreview();
+      onLlmChange();
     }
 
     async function clearCache() {
@@ -883,6 +956,7 @@ TERMINAL_HTML = """<!DOCTYPE html>
       const since = document.getElementById('sinceInput').value.trim();
       const audience = document.getElementById('audienceSelect').value;
       const llm = document.getElementById('llmSelect').value;
+      const model = document.getElementById('modelInput').value.trim();
       const nextGoal = document.getElementById('nextGoalInput').value.trim();
 
       const payload = {
@@ -890,6 +964,7 @@ TERMINAL_HTML = """<!DOCTYPE html>
         since,
         audience,
         llm,
+        model: (llm === 'ollama') ? model : '',
         next_goals: nextGoal ? [nextGoal] : [],
         formats: {
           pdf: document.getElementById('fmtPdf').checked,
@@ -976,6 +1051,15 @@ class WebStudioHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"repos": repos}).encode("utf-8"))
             return
 
+        if path == "/api/ollama/status":
+            from git2report.summarizer import list_local_ollama_models
+            models = list_local_ollama_models()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"online": len(models) > 0, "models": models}).encode("utf-8"))
+            return
+
         if path == "/api/preview":
             html_path = self.last_generated_files.get("html")
             if html_path and html_path.exists():
@@ -1025,6 +1109,7 @@ class WebStudioHandler(BaseHTTPRequestHandler):
                 since_str = data.get("since", "7d")
                 audience = data.get("audience", "guide")
                 llm = data.get("llm", "gemini")
+                model = data.get("model", "")
                 planned = data.get("next_goals", [])
 
                 repo_path = Path(repo_str)
@@ -1049,7 +1134,7 @@ class WebStudioHandler(BaseHTTPRequestHandler):
                     include_branches=True
                 )
 
-                chosen_model = "gemini-2.5-flash" if llm == "gemini" else "llama3:8b"
+                chosen_model = model or ("gemini-2.5-flash" if llm == "gemini" else ("llama3:8b" if llm == "ollama" else ""))
                 summarizer = get_summarizer(llm, chosen_model)
                 report_data = run_pipeline(opts, summarizer, log=log_fn)
 

@@ -27,21 +27,37 @@ git2report --ui               # Opens Web Studio at http://localhost:5000
 ```
 
 ### 💻 Command Line (Terminal)
-```
-git2report --repo ./myproject --since 7d --all --out report.html            # PDF + Markdown + Interactive HTML
-git2report --repo ./myproject --since 7d --llm gemini                       # Plain-English AI summaries (Google Gemini with Smart Cache)
-git2report --repo ./myproject --since 2w --audience client --both          # PDF + Markdown for clients
-git2report --repo ./myproject --llm ollama --model llama3:8b               # Local offline AI model
-git2report --repo ./myproject --artifacts output/                          # also save every step's result
-git2report --repo . --next "Finish saved jobs" --next "Write tests"       # add goals YOU wrote (never invented)
-git2report --repo . --no-branches                                         # skip the "in progress" section
-git2report --clear-cache                                                   # reset the smart summary cache
+```bash
+# 1. Standard full-format generation (PDF + HTML + Markdown)
+git2report --repo ./myproject --since 7d --all --out report.html
+
+# 2. Local AI with Ollama (Private, offline, zero API keys)
+git2report --repo ./myproject --llm ollama --model llama3:8b
+# Or shortcut:
+git2report --repo ./myproject --ollama --model mistral
+
+# 3. Cloud AI with Google Gemini (Fast, smart summary caching)
+git2report --repo ./myproject --llm gemini --model gemini-2.5-flash
+
+# 4. Pure offline deterministic mode (Zero AI, instant)
+git2report --repo ./myproject --llm offline --audience guide
+
+# 5. Targeted audience personas
+git2report --repo ./myproject --since 2w --audience client --both          # Business & user-facing
+git2report --repo ./myproject --since 2w --audience team --both            # Engineering release notes
+
+# 6. Sprint goals & caching
+git2report --repo . --next "Finish payment gateway" --next "Write tests"   # Authentic developer goals
+git2report --clear-cache                                                   # Reset summary cache
 ```
 
-`--llm offline` (default) builds each sentence from the commit messages themselves.
-`--llm gemini` uses Google Gemini (default `gemini-2.5-flash`) to rewrite changes in simple, everyday language understandable by anyone (pass `--api-key` or set `GEMINI_API_KEY`).
-`--llm ollama` asks a local model.
-If the AI is missing, returns bad JSON, or writes a number or file name, the tool retries once, then falls back to offline wording and says so in the report.
+### AI Engines (`--llm`)
+- **`--llm ollama`**: Uses a local model running on your machine via [Ollama](https://ollama.com/) (e.g., `llama3:8b`, `llama3.2`, `mistral`, `deepseek-r1:8b`, `phi4`). Zero data leaves your machine. Automatically discovers available local models. If Ollama is offline or uninstalled, it gracefully falls back to deterministic offline wording without crashing.
+- **`--llm gemini`**: Uses Google Gemini (`gemini-2.5-flash`) with smart SHA-256 caching (`.git2report_cache.json`) for fast execution and zero duplicate token costs. Set `GEMINI_API_KEY` in your environment or `.env` file.
+- **`--llm offline`** (default): Builds clean human sentences directly from commit messages without invoking any AI.
+
+Every AI output is validated by code: if the model returns invalid JSON, mentions raw numbers, or mentions file paths, Git2Report automatically retries once and falls back safely.
+
 
 ## Evaluation (manual vs tool vs baseline)
 
@@ -88,7 +104,8 @@ Done and tested:
 - ⚡ **Smart Summary Cache** (`.git2report_cache.json`) for instant sub-second re-runs and 0 API token waste.
 - 📊 **Visual Analytics & Charts** (Commit type distribution segmented bar & module churn chart embedded in PDF & HTML).
 - Offline summaries per audience, unmerged "in progress" branches, developer-written sprint goals.
-- Google Gemini AI integration with automatic fallback, ReportLab PDF, interactive HTML, Markdown, and 40 automated tests.
+- 🦙 **Ollama Local AI & Google Gemini Cloud AI**: Choose between 100% private local models (`llama3:8b`, `mistral`, `deepseek-r1`) or Google Gemini (`gemini-2.5-flash`), with automated code-validation and fallback.
+- ReportLab PDF, interactive HTML, Markdown, and 43 automated tests.
 - Tried on demo repo, pallets/click, and real full-stack project (CampusThrift).
 
 **Optional future work:** config file, multi-repo aggregator.

@@ -25,6 +25,10 @@ def _preprocess_argv(argv: list[str]) -> list[str]:
             result.extend(["--llm", "gemini"])
             i += 1
             continue
+        if arg == "--ollama":
+            result.extend(["--llm", "ollama"])
+            i += 1
+            continue
         if arg == "--llm":
             if i + 1 < len(argv) and not argv[i + 1].startswith("-") and argv[i + 1].lower() in ("gemini", "ollama", "offline"):
                 result.extend(["--llm", argv[i + 1].lower()])
@@ -132,7 +136,7 @@ def main(
         else:
             repo_path = Path(repo)
 
-        chosen_model = model or ("gemini-2.5-flash" if llm == Llm.gemini else "llama3:8b")
+        chosen_model = model or ("gemini-2.5-flash" if llm == Llm.gemini else ("llama3:8b" if llm == Llm.ollama else ""))
         opts = Options(repo=repo_path, since=parse_since(since), audience=audience.value, artifacts=artifacts,
                        planned=planned, include_branches=branches)
         data = run_pipeline(opts, get_summarizer(llm.value, chosen_model, api_key=api_key), log=log)

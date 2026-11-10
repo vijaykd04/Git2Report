@@ -129,24 +129,27 @@ class OfflineSummarizer:
 class OllamaSummarizer:
     mode = "ai"
 
-    def __init__(self, model: str = "llama3:8b", chat: Callable[[str], str] | None = None, retries: int = 1):
-        self.model = model
+    def __init__(self, model: str = "llama3:8b", host: str | None = None,
+                 chat: Callable[[str], str] | None = None, retries: int = 1):
+        import os
+        self.model = model or "llama3:8b"
+        self.host = host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
         self.retries = retries
         self._custom_chat = chat is not None
         self._chat = chat or (lambda p: self._ollama_call(p, True))
         self._ask = chat or (lambda p: self._ollama_call(p, False))
-        self.label = f"local AI model {model} (answers checked by code)"
+        self.label = f"local AI model Ollama ({self.model}) (answers checked by code)"
 
     def _ollama_call(self, prompt: str, json_mode: bool) -> str:
         # 1. Try python package if installed
         try:
-            import importlib
-            ollama = importlib.import_module("ollama")
+            import ollama
+            client = ollama.Client(host=self.host)
             kwargs = {"format": "json"} if json_mode else {}
-            resp = ollama.chat(model=self.model, options={"temperature": 0.1},
+            resp = client.chat(model=self.model, options={"temperature": 0.1},
                                messages=[{"role": "user", "content": prompt}], **kwargs)
             return resp["message"]["content"]
-        except ImportError:
+        except Exception:
             pass
 
         # 2. Zero-dependency fallback to local Ollama HTTP REST API
@@ -163,17 +166,18 @@ class OllamaSummarizer:
         if json_mode:
             payload["format"] = "json"
 
+        endpoint = f"{self.host.rstrip('/')}/api/chat"
         req = urllib.request.Request(
-            "http://localhost:11434/api/chat",
+            endpoint,
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"}
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as res:
+            with urllib.request.urlopen(req, timeout=45) as res:
                 data = json.loads(res.read().decode("utf-8"))
                 return data["message"]["content"]
         except urllib.error.URLError as e:
-            raise RuntimeError(f"Could not connect to Ollama at http://localhost:11434: {e}") from None
+            raise RuntimeError(f"Could not connect to Ollama at {self.host}: {e}") from None
 
     def ask(self, prompt: str) -> str:
         """Plain-text question to the model (used for the evaluation baseline)."""
@@ -329,10 +333,27 @@ class GeminiSummarizer:
         return Summary(fallback, "offline", True, f"{last_note}; used offline wording")
 
 
-def get_summarizer(kind: str, model: str, api_key: str | None = None):
+def list_local_ollama_models(host: str | None = None) -> list[str]:
+    """Check if Ollama server is running and return list of pulled model names."""
+    import json
+    import os
+    import urllib.request
+    target_host = host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    try:
+        url = f"{target_host.rstrip('/')}/api/tags"
+        with urllib.request.urlopen(url, timeout=1.5) as r:
+            data = json.loads(r.read().decode("utf-8"))
+            return [m["name"] for m in data.get("models", [])]
+    except Exception:
+        return []
+
+
+def get_summarizer(kind: str, model: str = "", api_key: str | None = None, host: str | None = None):
     if kind == "gemini":
         gemini_model = model if model and ":" not in model else "gemini-2.5-flash"
         return GeminiSummarizer(model=gemini_model, api_key=api_key)
     if kind == "ollama":
-        return OllamaSummarizer(model=model)
+        ollama_model = model or "llama3:8b"
+        return OllamaSummarizer(model=ollama_model, host=host)
     return OfflineSummarizer()
+
