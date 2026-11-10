@@ -10,6 +10,9 @@ from git2report.models import CommitRecord, FileChange, GitReportError
 
 
 def extract(repo_path: Path, since: datetime) -> list[CommitRecord]:
+    import shutil
+    if not shutil.which("git"):
+        raise GitReportError("Git is not installed on this system. Please install Git via 'winget install Git.Git' or from https://git-scm.com")
     repo_path = Path(repo_path)
     if not (repo_path / ".git").exists():
         raise GitReportError(f"'{repo_path}' is not a Git repository (no .git folder found).")
