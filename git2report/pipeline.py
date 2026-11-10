@@ -68,7 +68,7 @@ def run_pipeline(opts: Options, summarizer, cfg: Config | None = None,
     log("Step 1/7  extracting commits")
     commits = extract(opts.repo, opts.since)
     if not commits:
-        raise GitReportError("No commits found in that time window. Try a longer --since (e.g. 14d).")
+        raise GitReportError("No commits found in that time window. Try a longer --since (e.g. '2025-01-01' or click '2025-01-01 (All)').")
     log(f"          {len(commits)} commits found")
 
     log("Step 2/7  filtering noise")

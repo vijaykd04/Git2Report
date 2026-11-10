@@ -822,6 +822,9 @@ TERMINAL_HTML = """<!DOCTYPE html>
           pill.innerText = r.name;
           pill.onclick = () => {
             document.getElementById('repoInput').value = r.path;
+            if (r.path.toLowerCase().includes('campusthrift')) {
+              setSinceVal('2025-01-01');
+            }
             updateCliPreview();
           };
           container.appendChild(pill);

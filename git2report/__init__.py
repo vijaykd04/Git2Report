@@ -20,5 +20,5 @@ if not shutil.which("git"):
             os.environ["PATH"] = str(Path(cand).parent) + os.pathsep + os.environ.get("PATH", "")
             break
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
