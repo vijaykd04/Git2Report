@@ -683,6 +683,18 @@ TERMINAL_HTML = """<!DOCTYPE html>
               </select>
             </div>
 
+            <!-- Gemini API Key Input (Shows when gemini is selected) -->
+            <div class="arg-group" id="apiKeyGroup">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label class="arg-label" for="apiKeyInput">
+                  <span>--api-key</span>
+                  <span class="arg-desc">&lt;gemini key&gt;</span>
+                </label>
+                <span id="apiKeyStatusBadge" style="font-size: 0.68rem; color: var(--text-muted);"></span>
+              </div>
+              <input type="password" id="apiKeyInput" class="term-input" placeholder="Paste your GEMINI_API_KEY here..." oninput="updateCliPreview()">
+            </div>
+
             <!-- Model Selection (Shows for Ollama & Gemini) -->
             <div class="arg-group" id="modelGroup" style="display: none;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -819,6 +831,14 @@ TERMINAL_HTML = """<!DOCTYPE html>
       }
       updateCliPreview();
       checkOllamaStatus();
+      try {
+        const cfgRes = await fetch('/api/config');
+        const cfg = await cfgRes.json();
+        if (cfg.has_gemini_key) {
+          document.getElementById('apiKeyInput').placeholder = '●●●●●●●● (API key detected on system)';
+          document.getElementById('apiKeyStatusBadge').innerHTML = '<span style="color: var(--accent-green);">● KEY ACTIVE</span>';
+        }
+      } catch (e) {}
     });
 
     async function checkOllamaStatus() {
@@ -852,12 +872,18 @@ TERMINAL_HTML = """<!DOCTYPE html>
     function onLlmChange() {
       const llm = document.getElementById('llmSelect').value;
       const modelGroup = document.getElementById('modelGroup');
+      const apiKeyGroup = document.getElementById('apiKeyGroup');
       if (llm === 'ollama') {
         modelGroup.style.display = 'flex';
+        apiKeyGroup.style.display = 'none';
         document.getElementById('modelLabelDesc').innerText = '<ollama model, e.g. llama3:8b>';
         checkOllamaStatus();
+      } else if (llm === 'gemini') {
+        modelGroup.style.display = 'none';
+        apiKeyGroup.style.display = 'flex';
       } else {
         modelGroup.style.display = 'none';
+        apiKeyGroup.style.display = 'none';
       }
       updateCliPreview();
     }
@@ -882,11 +908,15 @@ TERMINAL_HTML = """<!DOCTYPE html>
       const audience = document.getElementById('audienceSelect').value;
       const llm = document.getElementById('llmSelect').value;
       const model = document.getElementById('modelInput').value.trim();
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
       const next = document.getElementById('nextGoalInput').value.trim();
 
       let cmd = `git2report --repo ${repo} --since ${since} --audience ${audience} --llm ${llm}`;
       if (llm === 'ollama' && model) {
         cmd += ` --model ${model}`;
+      }
+      if (llm === 'gemini' && apiKey) {
+        cmd += ` --api-key "●●●●"`;
       }
       if (next) {
         cmd += ` --next "${next}"`;
@@ -957,6 +987,7 @@ TERMINAL_HTML = """<!DOCTYPE html>
       const audience = document.getElementById('audienceSelect').value;
       const llm = document.getElementById('llmSelect').value;
       const model = document.getElementById('modelInput').value.trim();
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
       const nextGoal = document.getElementById('nextGoalInput').value.trim();
 
       const payload = {
@@ -965,6 +996,7 @@ TERMINAL_HTML = """<!DOCTYPE html>
         audience,
         llm,
         model: (llm === 'ollama') ? model : '',
+        api_key: (llm === 'gemini') ? apiKey : '',
         next_goals: nextGoal ? [nextGoal] : [],
         formats: {
           pdf: document.getElementById('fmtPdf').checked,
@@ -1060,6 +1092,16 @@ class WebStudioHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"online": len(models) > 0, "models": models}).encode("utf-8"))
             return
 
+        if path == "/api/config":
+            from git2report.summarizer import _load_env_file
+            _load_env_file()
+            has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"has_gemini_key": has_key}).encode("utf-8"))
+            return
+
         if path == "/api/preview":
             html_path = self.last_generated_files.get("html")
             if html_path and html_path.exists():
@@ -1110,7 +1152,16 @@ class WebStudioHandler(BaseHTTPRequestHandler):
                 audience = data.get("audience", "guide")
                 llm = data.get("llm", "gemini")
                 model = data.get("model", "")
+                user_api_key = data.get("api_key", "").strip()
                 planned = data.get("next_goals", [])
+
+                if user_api_key:
+                    os.environ["GEMINI_API_KEY"] = user_api_key
+                    try:
+                        env_file = Path.home() / ".git2report_env"
+                        env_file.write_text(f"GEMINI_API_KEY={user_api_key}\n", encoding="utf-8")
+                    except Exception:
+                        pass
 
                 repo_path = Path(repo_str)
                 if repo_str.startswith(("http://", "https://", "git@")):
@@ -1135,7 +1186,7 @@ class WebStudioHandler(BaseHTTPRequestHandler):
                 )
 
                 chosen_model = model or ("gemini-2.5-flash" if llm == "gemini" else ("llama3:8b" if llm == "ollama" else ""))
-                summarizer = get_summarizer(llm, chosen_model)
+                summarizer = get_summarizer(llm, chosen_model, api_key=user_api_key or None)
                 report_data = run_pipeline(opts, summarizer, log=log_fn)
 
                 reports_dir = Path("reports")
