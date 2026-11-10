@@ -5,9 +5,25 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "git2report"
 version = "0.1.0"
-description = "Turn Git history into a plain-language, evidence-linked progress report."
+description = "Turn Git history into a plain-language, evidence-linked progress report with visual charts and Terminal Web Studio."
 readme = "README.md"
 requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Vijay", email = "vijaykd04@users.noreply.github.com"}
+]
+keywords = ["git", "report", "changelog", "ai", "gemini", "ollama", "terminal", "metrics"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Topic :: Software Development :: Version Control :: Git"
+]
 dependencies = [
     "pydriller>=2.5",
     "typer>=0.9",
@@ -15,6 +31,11 @@ dependencies = [
     "reportlab>=4.0",
     "ollama>=0.3"
 ]
+
+[project.urls]
+Homepage = "https://github.com/vijaykd04/Git2Report"
+Repository = "https://github.com/vijaykd04/Git2Report.git"
+Issues = "https://github.com/vijaykd04/Git2Report/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]

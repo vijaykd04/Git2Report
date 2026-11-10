@@ -12,3 +12,6 @@ scratch/
 .env
 .git2report_cache.json
 reports/
+dist/
+build/
+
